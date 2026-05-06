@@ -15,9 +15,11 @@ body {
   justify-content: center;
   height: 100vh;
 }
+
 .center {
   text-align: center;
 }
+
 input, button {
   padding: 10px;
   margin-top: 10px;
@@ -26,22 +28,28 @@ input, button {
   color: white;
   width: 200px;
 }
+
+button:hover {
+  border-color: #00ffcc;
+}
 </style>
 </head>
 
 <body>
+
 <div class="center">
   <p>This place remembers words, not people.</p>
 
   <input type="password" id="pass" placeholder="Enter password">
   <br>
+
   <button onclick="enter()">Enter</button>
 
   <p id="info"></p>
 </div>
 
 <script>
-const BASE = "https://YOUR_BACKEND_URL";
+const BASE = "https://hell-rism.onrender.com";
 
 async function enter() {
   const password = document.getElementById("pass").value;
@@ -49,18 +57,25 @@ async function enter() {
 
   const res = await fetch(BASE + "/enter", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({password: password})
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      password: password
+    })
   });
 
   if (res.ok) {
-    const d = await res.json();
-    localStorage.setItem("s", d.session_id);
+    const data = await res.json();
+
+    localStorage.setItem("s", data.session_id);
+
     window.location.href = "board.html";
   } else {
     info.innerText = "Access denied or room full.";
   }
 }
 </script>
+
 </body>
 </html>

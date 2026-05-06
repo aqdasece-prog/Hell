@@ -22,6 +22,9 @@ body {
   height: 60vh;
   overflow-y: auto;
   margin-bottom: 15px;
+  border: 1px solid #222;
+  padding: 10px;
+  background: #090909;
 }
 
 .msg {
@@ -29,10 +32,16 @@ body {
   padding: 10px;
   margin-bottom: 5px;
   border-left: 2px solid #00ffcc;
+  word-wrap: break-word;
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
 }
 
 input {
-  width: 70%;
+  flex: 1;
   padding: 10px;
   background: #111;
   border: 1px solid #333;
@@ -40,11 +49,14 @@ input {
 }
 
 button {
-  width: 25%;
-  padding: 10px;
+  padding: 10px 15px;
   background: #111;
   border: 1px solid #333;
   color: white;
+}
+
+button:hover {
+  border-color: #00ffcc;
 }
 </style>
 </head>
@@ -55,54 +67,81 @@ button {
 
 <div id="messages"></div>
 
-<input id="msg" placeholder="Write something...">
-<button onclick="send()">Post</button>
+<div class="input-row">
+  <input id="msg" placeholder="Write something...">
+  <button onclick="send()">Post</button>
+</div>
 
 <script>
-const BASE = "https://YOUR_BACKEND_URL";
+const BASE = "https://hell-rism.onrender.com";
+
 const session = localStorage.getItem("s");
 
 if (!session) {
   window.location.href = "index.html";
 }
 
-// 🔥 IMPORTANT: use wss (secure websocket)
-const ws = new WebSocket("wss://YOUR_BACKEND_URL/ws/" + session);
+// Secure websocket
+const ws = new WebSocket(
+  "wss://hell-rism.onrender.com/ws/" + session
+);
 
 ws.onmessage = e => {
   add(e.data);
   updateStats();
 };
 
-function add(text){
+ws.onclose = () => {
+  console.log("Disconnected");
+};
+
+function add(text) {
   let d = document.createElement("div");
+
   d.className = "msg";
   d.innerText = text;
 
   messages.appendChild(d);
+
   messages.scrollTop = messages.scrollHeight;
 }
 
-async function send(){
-  if (!msg.value.trim()) return;
+async function send() {
+  const text = msg.value.trim();
 
-  await fetch(BASE + "/message/" + session, {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({content: msg.value})
-  });
+  if (!text) return;
+
+  const res = await fetch(
+    BASE + "/message/" + session,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        content: text
+      })
+    }
+  );
+
+  if (!res.ok) {
+    console.log("Message failed");
+  }
 
   msg.value = "";
 }
 
-async function load(){
-  let r = await fetch(BASE + "/messages");
-  let d = await r.json();
-  d.forEach(m => add(m.content));
+async function load() {
+  const r = await fetch(BASE + "/messages");
+
+  const data = await r.json();
+
+  data.forEach(m => add(m.content));
 }
 
 async function updateStats() {
   const res = await fetch(BASE + "/stats");
+
   const data = await res.json();
 
   document.getElementById("stats").innerText =
@@ -110,7 +149,9 @@ async function updateStats() {
 }
 
 load();
+
 updateStats();
+
 setInterval(updateStats, 3000);
 </script>
 
