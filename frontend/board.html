@@ -3,9 +3,11 @@
 <head>
 <title>Board</title>
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
 
 <style>
+
 body {
   background: #0a0a0a;
   color: #eaeaea;
@@ -58,32 +60,45 @@ button {
 button:hover {
   border-color: #00ffcc;
 }
+
 </style>
 </head>
 
 <body>
 
-<div id="stats">Active Users: ...</div>
+<div id="stats">
+  Active Users: ...
+</div>
 
 <div id="messages"></div>
 
 <div class="input-row">
-  <input id="msg" placeholder="Write something...">
-  <button onclick="send()">Post</button>
+
+  <input
+    id="msg"
+    placeholder="Write something..."
+  >
+
+  <button onclick="send()">
+    Post
+  </button>
+
 </div>
 
 <script>
-const BASE = "https://hell-rism.onrender.com";
 
-const session = localStorage.getItem("s");
+const BASE =
+  "https://hell-beqq.onrender.com";
+
+const session =
+  localStorage.getItem("s");
 
 if (!session) {
   window.location.href = "index.html";
 }
 
-// Secure websocket
 const ws = new WebSocket(
-  "wss://hell-rism.onrender.com/ws/" + session
+  "wss://hell-beqq.onrender.com/ws/" + session
 );
 
 ws.onmessage = e => {
@@ -96,18 +111,24 @@ ws.onclose = () => {
 };
 
 function add(text) {
-  let d = document.createElement("div");
+
+  let d =
+    document.createElement("div");
 
   d.className = "msg";
+
   d.innerText = text;
 
   messages.appendChild(d);
 
-  messages.scrollTop = messages.scrollHeight;
+  messages.scrollTop =
+    messages.scrollHeight;
 }
 
 async function send() {
-  const text = msg.value.trim();
+
+  const text =
+    msg.value.trim();
 
   if (!text) return;
 
@@ -115,9 +136,11 @@ async function send() {
     BASE + "/message/" + session,
     {
       method: "POST",
+
       headers: {
         "Content-Type": "application/json"
       },
+
       body: JSON.stringify({
         content: text
       })
@@ -132,20 +155,29 @@ async function send() {
 }
 
 async function load() {
-  const r = await fetch(BASE + "/messages");
+
+  const r = await fetch(
+    BASE + "/messages"
+  );
 
   const data = await r.json();
 
-  data.forEach(m => add(m.content));
+  data.forEach(
+    m => add(m.content)
+  );
 }
 
 async function updateStats() {
-  const res = await fetch(BASE + "/stats");
+
+  const res = await fetch(
+    BASE + "/stats"
+  );
 
   const data = await res.json();
 
-  document.getElementById("stats").innerText =
-    `Active Users: ${data.active_users} / ${data.max_users}`;
+  document.getElementById("stats")
+    .innerText =
+      `Active Users: ${data.active_users} / ${data.max_users}`;
 }
 
 load();
@@ -153,6 +185,7 @@ load();
 updateStats();
 
 setInterval(updateStats, 3000);
+
 </script>
 
 </body>

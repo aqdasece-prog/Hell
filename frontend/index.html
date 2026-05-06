@@ -38,43 +38,81 @@ button:hover {
 <body>
 
 <div class="center">
+
   <p>This place remembers words, not people.</p>
 
-  <input type="password" id="pass" placeholder="Enter password">
+  <input
+    type="password"
+    id="pass"
+    placeholder="Enter password"
+  >
+
   <br>
 
-  <button onclick="enter()">Enter</button>
+  <button onclick="enter()">
+    Enter
+  </button>
 
   <p id="info"></p>
+
 </div>
 
 <script>
-const BASE = "https://hell-rism.onrender.com";
+
+const BASE = "https://hell-beqq.onrender.com";
 
 async function enter() {
-  const password = document.getElementById("pass").value;
-  const info = document.getElementById("info");
 
-  const res = await fetch(BASE + "/enter", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      password: password
-    })
-  });
+  const password =
+    document.getElementById("pass").value;
 
-  if (res.ok) {
-    const data = await res.json();
+  const info =
+    document.getElementById("info");
 
-    localStorage.setItem("s", data.session_id);
+  info.innerText = "Connecting to archive...";
 
-    window.location.href = "board.html";
-  } else {
-    info.innerText = "Access denied or room full.";
+  try {
+
+    const res = await fetch(
+      BASE + "/enter",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+          password: password
+        })
+      }
+    );
+
+    if (res.ok) {
+
+      const data = await res.json();
+
+      localStorage.setItem(
+        "s",
+        data.session_id
+      );
+
+      window.location.href =
+        "board.html";
+
+    } else {
+
+      info.innerText =
+        "Access denied or room full.";
+    }
+
+  } catch (e) {
+
+    info.innerText =
+      "Server waking up. Try again shortly.";
   }
 }
+
 </script>
 
 </body>
