@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Board</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  background: #0a0a0a;
+  color: #eaeaea;
+  font-family: monospace;
+  padding: 10px;
+}
+
+#stats {
+  margin-bottom: 10px;
+  color: #00ffcc;
+}
+
+#messages {
+  height: 60vh;
+  overflow-y: auto;
+  margin-bottom: 15px;
+}
+
+.msg {
+  background: #111;
+  padding: 10px;
+  margin-bottom: 5px;
+  border-left: 2px solid #00ffcc;
+}
+
+input {
+  width: 70%;
+  padding: 10px;
+  background: #111;
+  border: 1px solid #333;
+  color: white;
+}
+
+button {
+  width: 25%;
+  padding: 10px;
+  background: #111;
+  border: 1px solid #333;
+  color: white;
+}
+</style>
+</head>
+
+<body>
+
+<div id="stats">Active Users: ...</div>
+
+<div id="messages"></div>
+
+<input id="msg" placeholder="Write something...">
+<button onclick="send()">Post</button>
+
+<script>
+const BASE = "https://YOUR_BACKEND_URL";
+const session = localStorage.getItem("s");
+
+if (!session) {
+  window.location.href = "index.html";
+}
+
+// 🔥 IMPORTANT: use wss (secure websocket)
+const ws = new WebSocket("wss://YOUR_BACKEND_URL/ws/" + session);
+
+ws.onmessage = e => {
+  add(e.data);
+  updateStats();
+};
+
+function add(text){
+  let d = document.createElement("div");
+  d.className = "msg";
+  d.innerText = text;
+
+  messages.appendChild(d);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+async function send(){
+  if (!msg.value.trim()) return;
+
+  await fetch(BASE + "/message/" + session, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({content: msg.value})
+  });
+
+  msg.value = "";
+}
+
+async function load(){
+  let r = await fetch(BASE + "/messages");
+  let d = await r.json();
+  d.forEach(m => add(m.content));
+}
+
+async function updateStats() {
+  const res = await fetch(BASE + "/stats");
+  const data = await res.json();
+
+  document.getElementById("stats").innerText =
+    `Active Users: ${data.active_users} / ${data.max_users}`;
+}
+
+load();
+updateStats();
+setInterval(updateStats, 3000);
+</script>
+
+</body>
+</html>
