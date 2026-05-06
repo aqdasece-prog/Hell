@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <title>Board</title>
 
 <meta name="viewport"
@@ -55,6 +56,7 @@ button {
   background: #111;
   border: 1px solid #333;
   color: white;
+  cursor: pointer;
 }
 
 button:hover {
@@ -62,6 +64,7 @@ button:hover {
 }
 
 </style>
+
 </head>
 
 <body>
@@ -97,18 +100,47 @@ if (!session) {
   window.location.href = "index.html";
 }
 
-const ws = new WebSocket(
-  "wss://hell-beqq.onrender.com/ws/" + session
-);
+let ws;
 
-ws.onmessage = e => {
-  add(e.data);
-  updateStats();
-};
+// ----------------------
+// WEBSOCKET CONNECTION
+// ----------------------
 
-ws.onclose = () => {
-  console.log("Disconnected");
-};
+function connectWS() {
+
+  ws = new WebSocket(
+    "wss://hell-beqq.onrender.com/ws/" + session
+  );
+
+  ws.onopen = () => {
+    console.log("WebSocket connected");
+  };
+
+  ws.onmessage = e => {
+
+    add(e.data);
+
+    updateStats();
+  };
+
+  ws.onerror = () => {
+    console.log("WebSocket error");
+  };
+
+  ws.onclose = () => {
+
+    console.log("WebSocket disconnected");
+
+    // Auto reconnect
+    setTimeout(connectWS, 3000);
+  };
+}
+
+connectWS();
+
+// ----------------------
+// ADD MESSAGE
+// ----------------------
 
 function add(text) {
 
@@ -125,6 +157,10 @@ function add(text) {
     messages.scrollHeight;
 }
 
+// ----------------------
+// SEND MESSAGE
+// ----------------------
+
 async function send() {
 
   const text =
@@ -132,53 +168,104 @@ async function send() {
 
   if (!text) return;
 
-  const res = await fetch(
-    BASE + "/message/" + session,
-    {
-      method: "POST",
+  try {
 
-      headers: {
-        "Content-Type": "application/json"
-      },
+    const res = await fetch(
+      BASE + "/message/" + session,
+      {
+        method: "POST",
 
-      body: JSON.stringify({
-        content: text
-      })
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+          content: text
+        })
+      }
+    );
+
+    if (!res.ok) {
+      console.log("Message failed");
     }
-  );
 
-  if (!res.ok) {
-    console.log("Message failed");
+  } catch (e) {
+
+    console.log("Send error");
   }
 
   msg.value = "";
 }
 
+// ----------------------
+// LOAD OLD MESSAGES
+// ----------------------
+
 async function load() {
 
-  const r = await fetch(
-    BASE + "/messages"
-  );
+  try {
 
-  const data = await r.json();
+    const r = await fetch(
+      BASE + "/messages"
+    );
 
-  data.forEach(
-    m => add(m.content)
-  );
+    const data =
+      await r.json();
+
+    messages.innerHTML = "";
+
+    data.forEach(
+      m => add(m.content)
+    );
+
+  } catch (e) {
+
+    console.log("Load failed");
+  }
 }
+
+// ----------------------
+// UPDATE STATS
+// ----------------------
 
 async function updateStats() {
 
-  const res = await fetch(
-    BASE + "/stats"
-  );
+  try {
 
-  const data = await res.json();
+    const res = await fetch(
+      BASE + "/stats"
+    );
 
-  document.getElementById("stats")
-    .innerText =
-      `Active Users: ${data.active_users} / ${data.max_users}`;
+    const data =
+      await res.json();
+
+    document.getElementById("stats")
+      .innerText =
+        `Active Users: ${data.active_users} / ${data.max_users}`;
+
+  } catch (e) {
+
+    console.log("Stats failed");
+  }
 }
+
+// ----------------------
+// ENTER KEY SUPPORT
+// ----------------------
+
+msg.addEventListener(
+  "keypress",
+  function(e) {
+
+    if (e.key === "Enter") {
+      send();
+    }
+  }
+);
+
+// ----------------------
+// INITIAL LOAD
+// ----------------------
 
 load();
 
