@@ -35,7 +35,6 @@ body {
   padding: 10px;
   margin-bottom: 5px;
   border-left: 2px solid #00ffcc;
-  word-wrap: break-word;
 }
 
 .input-row {
@@ -56,11 +55,6 @@ button {
   background: #111;
   border: 1px solid #333;
   color: white;
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #00ffcc;
 }
 
 </style>
@@ -100,108 +94,13 @@ if (!session) {
   window.location.href = "index.html";
 }
 
-let ws;
+let lastMessageCount = 0;
 
-// ----------------------
-// WEBSOCKET CONNECTION
-// ----------------------
+// -------------------
+// LOAD MESSAGES
+// -------------------
 
-function connectWS() {
-
-  ws = new WebSocket(
-    "wss://hell-beqq.onrender.com/ws/" + session
-  );
-
-  ws.onopen = () => {
-    console.log("WebSocket connected");
-  };
-
-  ws.onmessage = e => {
-
-    add(e.data);
-
-    updateStats();
-  };
-
-  ws.onerror = () => {
-    console.log("WebSocket error");
-  };
-
-  ws.onclose = () => {
-
-    console.log("WebSocket disconnected");
-
-    // Auto reconnect
-    setTimeout(connectWS, 3000);
-  };
-}
-
-connectWS();
-
-// ----------------------
-// ADD MESSAGE
-// ----------------------
-
-function add(text) {
-
-  let d =
-    document.createElement("div");
-
-  d.className = "msg";
-
-  d.innerText = text;
-
-  messages.appendChild(d);
-
-  messages.scrollTop =
-    messages.scrollHeight;
-}
-
-// ----------------------
-// SEND MESSAGE
-// ----------------------
-
-async function send() {
-
-  const text =
-    msg.value.trim();
-
-  if (!text) return;
-
-  try {
-
-    const res = await fetch(
-      BASE + "/message/" + session,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json"
-        },
-
-        body: JSON.stringify({
-          content: text
-        })
-      }
-    );
-
-    if (!res.ok) {
-      console.log("Message failed");
-    }
-
-  } catch (e) {
-
-    console.log("Send error");
-  }
-
-  msg.value = "";
-}
-
-// ----------------------
-// LOAD OLD MESSAGES
-// ----------------------
-
-async function load() {
+async function loadMessages() {
 
   try {
 
@@ -212,21 +111,86 @@ async function load() {
     const data =
       await r.json();
 
-    messages.innerHTML = "";
+    if (data.length !== lastMessageCount) {
 
-    data.forEach(
-      m => add(m.content)
-    );
+      messages.innerHTML = "";
+
+      data.forEach(m => {
+
+        let d =
+          document.createElement("div");
+
+        d.className = "msg";
+
+        d.innerText = m.content;
+
+        messages.appendChild(d);
+      });
+
+      messages.scrollTop =
+        messages.scrollHeight;
+
+      lastMessageCount = data.length;
+    }
 
   } catch (e) {
 
-    console.log("Load failed");
+    console.log("load failed");
   }
 }
 
-// ----------------------
-// UPDATE STATS
-// ----------------------
+// -------------------
+// SEND MESSAGE
+// -------------------
+
+async function send() {
+
+  const text =
+    msg.value.trim();
+
+  if (!text) return;
+
+  await fetch(
+    BASE + "/message/" + session,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        content: text
+      })
+    }
+  );
+
+  msg.value = "";
+
+  loadMessages();
+}
+
+// -------------------
+// HEARTBEAT
+// -------------------
+
+async function heartbeat() {
+
+  try {
+
+    await fetch(
+      BASE + "/heartbeat/" + session,
+      {
+        method: "POST"
+      }
+    );
+
+  } catch {}
+}
+
+// -------------------
+// STATS
+// -------------------
 
 async function updateStats() {
 
@@ -243,15 +207,12 @@ async function updateStats() {
       .innerText =
         `Active Users: ${data.active_users} / ${data.max_users}`;
 
-  } catch (e) {
-
-    console.log("Stats failed");
-  }
+  } catch {}
 }
 
-// ----------------------
-// ENTER KEY SUPPORT
-// ----------------------
+// -------------------
+// ENTER KEY
+// -------------------
 
 msg.addEventListener(
   "keypress",
@@ -263,15 +224,21 @@ msg.addEventListener(
   }
 );
 
-// ----------------------
-// INITIAL LOAD
-// ----------------------
+// -------------------
+// START
+// -------------------
 
-load();
+loadMessages();
 
 updateStats();
 
+heartbeat();
+
+setInterval(loadMessages, 2000);
+
 setInterval(updateStats, 3000);
+
+setInterval(heartbeat, 10000);
 
 </script>
 
