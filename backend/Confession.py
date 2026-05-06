@@ -11,8 +11,19 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 from datetime import datetime
 
-PASSWORD = "Galaxy1776"
+# -------------------
+# PASSWORDS
+# -------------------
+
+USER_PASSWORD = "Galaxy1776"
+
+ADMIN_PASSWORD = "VoidDelete999"
+
 MAX_USERS = 50
+
+# -------------------
+# DATABASE
+# -------------------
 
 DATABASE_URL = "sqlite:///./test.db"
 
@@ -37,7 +48,7 @@ app.add_middleware(
 )
 
 # -------------------
-# DATABASE
+# MESSAGE MODEL
 # -------------------
 
 class Message(Base):
@@ -68,9 +79,9 @@ def cleanup_sessions():
 
     dead = []
 
-    for sid, last_seen in sessions.items():
+    for sid, data in sessions.items():
 
-        if now - last_seen > 30:
+        if now - data["last_seen"] > 30:
             dead.append(sid)
 
     for sid in dead:
@@ -88,7 +99,15 @@ def enter(req: AuthRequest):
 
     cleanup_sessions()
 
-    if req.password != PASSWORD:
+    role = None
+
+    if req.password == USER_PASSWORD:
+        role = "user"
+
+    elif req.password == ADMIN_PASSWORD:
+        role = "admin"
+
+    else:
         raise HTTPException(status_code=403)
 
     if len(sessions) >= MAX_USERS:
@@ -99,10 +118,14 @@ def enter(req: AuthRequest):
 
     session_id = str(uuid.uuid4())
 
-    sessions[session_id] = time.time()
+    sessions[session_id] = {
+        "last_seen": time.time(),
+        "role": role
+    }
 
     return {
-        "session_id": session_id
+        "session_id": session_id,
+        "role": role
     }
 
 # -------------------
@@ -114,7 +137,7 @@ def heartbeat(session_id: str):
 
     if session_id in sessions:
 
-        sessions[session_id] = time.time()
+        sessions[session_id]["last_seen"] = time.time()
 
         return {"ok": True}
 
@@ -135,7 +158,7 @@ def stats():
     }
 
 # -------------------
-# MESSAGE
+# POST MESSAGE
 # -------------------
 
 class Msg(BaseModel):
@@ -190,8 +213,43 @@ def get_msgs():
 
     return [
         {
+            "id": m.id,
             "content": m.content,
             "timestamp": str(m.created_at)
         }
         for m in data
     ]
+
+# -------------------
+# DELETE MESSAGE
+# -------------------
+
+@app.delete("/delete/{session_id}/{message_id}")
+def delete_message(session_id: str, message_id: str):
+
+    cleanup_sessions()
+
+    if session_id not in sessions:
+        raise HTTPException(status_code=403)
+
+    if sessions[session_id]["role"] != "admin":
+        raise HTTPException(status_code=403)
+
+    db = SessionLocal()
+
+    msg = (
+        db.query(Message)
+        .filter(Message.id == message_id)
+        .first()
+    )
+
+    if not msg:
+        raise HTTPException(status_code=404)
+
+    db.delete(msg)
+
+    db.commit()
+
+    db.close()
+
+    return {"deleted": True}

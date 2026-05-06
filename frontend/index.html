@@ -1,18 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <title>Archive</title>
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
 
 <style>
+
 body {
   background: #0a0a0a;
   color: #eaeaea;
   font-family: monospace;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   height: 100vh;
 }
 
@@ -21,25 +26,35 @@ body {
 }
 
 input, button {
+
   padding: 10px;
+
   margin-top: 10px;
+
   background: #111;
+
   border: 1px solid #333;
+
   color: white;
-  width: 200px;
+
+  width: 220px;
 }
 
 button:hover {
   border-color: #00ffcc;
 }
+
 </style>
+
 </head>
 
 <body>
 
 <div class="center">
 
-  <p>This place remembers words, not people.</p>
+  <p>
+    This place remembers words, not people.
+  </p>
 
   <input
     type="password"
@@ -59,7 +74,8 @@ button:hover {
 
 <script>
 
-const BASE = "https://hell-beqq.onrender.com";
+const BASE =
+  "https://hell-beqq.onrender.com";
 
 async function enter() {
 
@@ -69,7 +85,8 @@ async function enter() {
   const info =
     document.getElementById("info");
 
-  info.innerText = "Connecting to archive...";
+  info.innerText =
+    "Connecting to archive...";
 
   try {
 
@@ -90,11 +107,17 @@ async function enter() {
 
     if (res.ok) {
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
       localStorage.setItem(
         "s",
         data.session_id
+      );
+
+      localStorage.setItem(
+        "role",
+        data.role
       );
 
       window.location.href =
@@ -109,7 +132,7 @@ async function enter() {
   } catch (e) {
 
     info.innerText =
-      "Server waking up. Try again shortly.";
+      "Server waking up. Try again.";
   }
 }
 

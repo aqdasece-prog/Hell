@@ -37,23 +37,53 @@ body {
   border-left: 2px solid #00ffcc;
 }
 
+.timestamp {
+  font-size: 12px;
+  color: #777;
+  margin-top: 5px;
+}
+
+.delete-btn {
+
+  margin-top: 10px;
+
+  background: #220000;
+
+  border: 1px solid #550000;
+
+  color: #ff7777;
+
+  padding: 5px 10px;
+
+  cursor: pointer;
+}
+
 .input-row {
   display: flex;
   gap: 10px;
 }
 
 input {
+
   flex: 1;
+
   padding: 10px;
+
   background: #111;
+
   border: 1px solid #333;
+
   color: white;
 }
 
 button {
+
   padding: 10px 15px;
+
   background: #111;
+
   border: 1px solid #333;
+
   color: white;
 }
 
@@ -90,8 +120,12 @@ const BASE =
 const session =
   localStorage.getItem("s");
 
+const role =
+  localStorage.getItem("role");
+
 if (!session) {
-  window.location.href = "index.html";
+  window.location.href =
+    "index.html";
 }
 
 let lastMessageCount = 0;
@@ -122,7 +156,31 @@ async function loadMessages() {
 
         d.className = "msg";
 
-        d.innerText = m.content;
+        d.innerHTML = `
+          <div>${m.content}</div>
+
+          <div class="timestamp">
+            ${m.timestamp}
+          </div>
+        `;
+
+        // ADMIN DELETE
+        if (role === "admin") {
+
+          let del =
+            document.createElement("button");
+
+          del.className =
+            "delete-btn";
+
+          del.innerText =
+            "Delete";
+
+          del.onclick =
+            () => deleteMessage(m.id);
+
+          d.appendChild(del);
+        }
 
         messages.appendChild(d);
       });
@@ -130,11 +188,11 @@ async function loadMessages() {
       messages.scrollTop =
         messages.scrollHeight;
 
-      lastMessageCount = data.length;
+      lastMessageCount =
+        data.length;
     }
 
   } catch (e) {
-
     console.log("load failed");
   }
 }
@@ -166,6 +224,29 @@ async function send() {
   );
 
   msg.value = "";
+
+  loadMessages();
+}
+
+// -------------------
+// DELETE MESSAGE
+// -------------------
+
+async function deleteMessage(id) {
+
+  if (!confirm("Delete message?"))
+    return;
+
+  await fetch(
+    BASE +
+    "/delete/" +
+    session +
+    "/" +
+    id,
+    {
+      method: "DELETE"
+    }
+  );
 
   loadMessages();
 }
