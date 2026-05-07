@@ -6,8 +6,18 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from sqlalchemy import create_engine, Column, Text, TIMESTAMP
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Text,
+    TIMESTAMP,
+    Float
+)
+
+from sqlalchemy.orm import (
+    sessionmaker,
+    declarative_base
+)
 
 from datetime import datetime
 
@@ -27,7 +37,12 @@ MAX_USERS = 50
 
 DATABASE_URL = "sqlite:///./test.db"
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={
+        "check_same_thread": False
+    }
+)
 
 SessionLocal = sessionmaker(bind=engine)
 
@@ -48,7 +63,7 @@ app.add_middleware(
 )
 
 # -------------------
-# MESSAGE MODEL
+# MESSAGE TABLE
 # -------------------
 
 class Message(Base):
@@ -61,13 +76,25 @@ class Message(Base):
 
     created_at = Column(TIMESTAMP)
 
+# -------------------
+# SESSION TABLE
+# -------------------
+
+class Session(Base):
+
+    __tablename__ = "sessions"
+
+    id = Column(Text, primary_key=True)
+
+    role = Column(Text)
+
+    last_seen = Column(Float)
+
+# -------------------
+# CREATE TABLES
+# -------------------
+
 Base.metadata.create_all(bind=engine)
-
-# -------------------
-# SESSION STORAGE
-# -------------------
-
-sessions = {}
 
 # -------------------
 # CLEANUP
@@ -75,17 +102,22 @@ sessions = {}
 
 def cleanup_sessions():
 
+    db = SessionLocal()
+
     now = time.time()
 
-    dead = []
+    dead = (
+        db.query(Session)
+        .filter(now - Session.last_seen > 300)
+        .all()
+    )
 
-    for sid, data in sessions.items():
+    for s in dead:
+        db.delete(s)
 
-        if now - data["last_seen"] > 30:
-            dead.append(sid)
+    db.commit()
 
-    for sid in dead:
-        sessions.pop(sid, None)
+    db.close()
 
 # -------------------
 # AUTH
@@ -110,7 +142,14 @@ def enter(req: AuthRequest):
     else:
         raise HTTPException(status_code=403)
 
-    if len(sessions) >= MAX_USERS:
+    db = SessionLocal()
+
+    active_users = db.query(Session).count()
+
+    if active_users >= MAX_USERS:
+
+        db.close()
+
         raise HTTPException(
             status_code=403,
             detail="Room full"
@@ -118,10 +157,17 @@ def enter(req: AuthRequest):
 
     session_id = str(uuid.uuid4())
 
-    sessions[session_id] = {
-        "last_seen": time.time(),
-        "role": role
-    }
+    new_session = Session(
+        id=session_id,
+        role=role,
+        last_seen=time.time()
+    )
+
+    db.add(new_session)
+
+    db.commit()
+
+    db.close()
 
     return {
         "session_id": session_id,
@@ -135,13 +181,27 @@ def enter(req: AuthRequest):
 @app.post("/heartbeat/{session_id}")
 def heartbeat(session_id: str):
 
-    if session_id in sessions:
+    db = SessionLocal()
 
-        sessions[session_id]["last_seen"] = time.time()
+    s = (
+        db.query(Session)
+        .filter(Session.id == session_id)
+        .first()
+    )
 
-        return {"ok": True}
+    if not s:
 
-    return {"ok": False}
+        db.close()
+
+        return {"ok": False}
+
+    s.last_seen = time.time()
+
+    db.commit()
+
+    db.close()
+
+    return {"ok": True}
 
 # -------------------
 # STATS
@@ -152,8 +212,14 @@ def stats():
 
     cleanup_sessions()
 
+    db = SessionLocal()
+
+    active_users = db.query(Session).count()
+
+    db.close()
+
     return {
-        "active_users": len(sessions),
+        "active_users": active_users,
         "max_users": MAX_USERS
     }
 
@@ -169,15 +235,29 @@ def post(session_id: str, msg: Msg):
 
     cleanup_sessions()
 
-    if session_id not in sessions:
+    db = SessionLocal()
+
+    s = (
+        db.query(Session)
+        .filter(Session.id == session_id)
+        .first()
+    )
+
+    if not s:
+
+        db.close()
+
         raise HTTPException(status_code=403)
 
-    clean = html.escape(msg.content.strip())
+    clean = html.escape(
+        msg.content.strip()
+    )
 
     if not clean:
-        raise HTTPException(status_code=400)
 
-    db = SessionLocal()
+        db.close()
+
+        raise HTTPException(status_code=400)
 
     new = Message(
         id=str(uuid.uuid4()),
@@ -225,17 +305,32 @@ def get_msgs():
 # -------------------
 
 @app.delete("/delete/{session_id}/{message_id}")
-def delete_message(session_id: str, message_id: str):
+def delete_message(
+    session_id: str,
+    message_id: str
+):
 
     cleanup_sessions()
 
-    if session_id not in sessions:
-        raise HTTPException(status_code=403)
-
-    if sessions[session_id]["role"] != "admin":
-        raise HTTPException(status_code=403)
-
     db = SessionLocal()
+
+    s = (
+        db.query(Session)
+        .filter(Session.id == session_id)
+        .first()
+    )
+
+    if not s:
+
+        db.close()
+
+        raise HTTPException(status_code=403)
+
+    if s.role != "admin":
+
+        db.close()
+
+        raise HTTPException(status_code=403)
 
     msg = (
         db.query(Message)
@@ -244,6 +339,9 @@ def delete_message(session_id: str, message_id: str):
     )
 
     if not msg:
+
+        db.close()
+
         raise HTTPException(status_code=404)
 
     db.delete(msg)
@@ -252,4 +350,17 @@ def delete_message(session_id: str, message_id: str):
 
     db.close()
 
-    return {"deleted": True}
+    return {
+        "deleted": True
+    }
+
+# -------------------
+# ROOT
+# -------------------
+
+@app.get("/")
+def root():
+
+    return {
+        "status": "online"
+    }
