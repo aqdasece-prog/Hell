@@ -108,7 +108,7 @@ def cleanup_sessions():
 
     dead = (
         db.query(Session)
-        .filter(now - Session.last_seen > 300)
+        .filter(now - Session.last_seen > 86400)
         .all()
     )
 
