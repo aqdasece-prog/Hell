@@ -106,9 +106,12 @@ def cleanup_sessions():
 
     now = time.time()
 
+    # 24 HOURS
+    SESSION_TIMEOUT = 86400
+
     dead = (
         db.query(Session)
-        .filter(now - Session.last_seen > 86400)
+        .filter(now - Session.last_seen > SESSION_TIMEOUT)
         .all()
     )
 
