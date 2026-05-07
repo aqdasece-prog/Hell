@@ -145,53 +145,46 @@ async function loadMessages() {
     const data =
       await r.json();
 
-    if (data.length !== lastMessageCount) {
+    messages.innerHTML = "";
 
-      messages.innerHTML = "";
+data.forEach(m => {
 
-      data.forEach(m => {
+  let d =
+    document.createElement("div");
 
-        let d =
-          document.createElement("div");
+  d.className = "msg";
 
-        d.className = "msg";
+  d.innerHTML = `
+    <div>${m.content}</div>
 
-        d.innerHTML = `
-          <div>${m.content}</div>
+    <div class="timestamp">
+      ${m.timestamp}
+    </div>
+  `;
 
-          <div class="timestamp">
-            ${m.timestamp}
-          </div>
-        `;
+  // ADMIN DELETE
+  if (role === "admin") {
 
-        // ADMIN DELETE
-        if (role === "admin") {
+    let del =
+      document.createElement("button");
 
-          let del =
-            document.createElement("button");
+    del.className =
+      "delete-btn";
 
-          del.className =
-            "delete-btn";
+    del.innerText =
+      "Delete";
 
-          del.innerText =
-            "Delete";
+    del.onclick =
+      () => deleteMessage(m.id);
 
-          del.onclick =
-            () => deleteMessage(m.id);
+    d.appendChild(del);
+  }
 
-          d.appendChild(del);
-        }
+  messages.appendChild(d);
+});
 
-        messages.appendChild(d);
-      });
-
-      messages.scrollTop =
-        messages.scrollHeight;
-
-      lastMessageCount =
-        data.length;
-    }
-
+messages.scrollTop =
+  messages.scrollHeight;
   } catch (e) {
     console.log("load failed");
   }
