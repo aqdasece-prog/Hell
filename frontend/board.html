@@ -208,7 +208,7 @@ async function send() {
 
   if (!text) return;
 
-  await fetch(
+  const res = await fetch(
     BASE + "/message/" + session,
     {
       method: "POST",
@@ -223,11 +223,25 @@ async function send() {
     }
   );
 
+  // SESSION LOST
+  if (res.status === 403) {
+
+    alert(
+      "Session expired. Please reconnect."
+    );
+
+    localStorage.clear();
+
+    window.location.href =
+      "index.html";
+
+    return;
+  }
+
   msg.value = "";
 
   loadMessages();
 }
-
 // -------------------
 // DELETE MESSAGE
 // -------------------
