@@ -107,7 +107,7 @@ def cleanup_sessions():
     now = time.time()
 
     # 24 HOURS
-    SESSION_TIMEOUT = 86400
+    SESSION_TIMEOUT = 300
 
     dead = (
         db.query(Session)
