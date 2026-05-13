@@ -188,8 +188,16 @@ async function loadMessages() {
       messages.appendChild(d);
     });
 
-    messages.scrollTop =
-      messages.scrollHeight;
+    const nearBottom =
+  messages.scrollHeight -
+  messages.scrollTop -
+  messages.clientHeight < 100;
+
+if (nearBottom) {
+
+  messages.scrollTop =
+    messages.scrollHeight;
+}
 
   } catch (e) {
 

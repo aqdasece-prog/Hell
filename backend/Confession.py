@@ -107,7 +107,7 @@ def cleanup_sessions():
     now = time.time()
 
     # 24 HOURS
-    SESSION_TIMEOUT = 300
+    SESSION_TIMEOUT = 600
 
     dead = (
         db.query(Session)
@@ -288,7 +288,7 @@ def get_msgs():
     data = (
         db.query(Message)
         .order_by(Message.created_at.asc())
-        .limit(100)
+        .limit(30000)
         .all()
     )
 
